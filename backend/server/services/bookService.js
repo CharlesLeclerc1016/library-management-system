@@ -48,6 +48,28 @@ function toBookSummary(book, ratingMap) {
   };
 }
 
+async function listBooks(query) {
+  const { page, size } = parsePagination(query || {});
+
+  const [total, books] = await prisma.$transaction([
+    prisma.book.count(),
+    prisma.book.findMany({
+      skip: (page - 1) * size,
+      take: size,
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  const ratingMap = await getAverageRatings(books.map((book) => book.id));
+
+  return {
+    total,
+    page,
+    size,
+    list: books.map((book) => toBookSummary(book, ratingMap)),
+  };
+}
+
 async function searchBooks(query) {
   const { keyword, type } = query || {};
   const { page, size } = parsePagination(query || {});
@@ -125,6 +147,7 @@ async function getBookDetail(bookId) {
 }
 
 module.exports = {
+  listBooks,
   searchBooks,
   getBookDetail,
 };

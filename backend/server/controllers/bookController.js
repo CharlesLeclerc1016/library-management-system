@@ -1,6 +1,15 @@
 const bookService = require("../services/bookService");
 const { sendSuccess } = require("../lib/response");
 
+async function listBooks(req, res, next) {
+  try {
+    const data = await bookService.listBooks(req.query);
+    sendSuccess(res, data);
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function searchBooks(req, res, next) {
   try {
     const data = await bookService.searchBooks(req.query);
@@ -20,6 +29,7 @@ async function getBookDetail(req, res, next) {
 }
 
 module.exports = {
+  listBooks,
   searchBooks,
   getBookDetail,
 };
