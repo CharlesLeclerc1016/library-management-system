@@ -99,6 +99,8 @@ async function logout(token) {
   revokeToken(token);
 }
 
+
+
 module.exports = {
   register,
   login,
