@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import './App.css'
 import ReaderDashboard from './components/reader/ReaderDashboard'
 import LibrarianDashboard from './components/librarian/LibrarianDashboard'
+import AdminDashboard from './components/admin/AdminDashboard'
 import LoginPage from './components/auth/LoginPage'
 
 const API_BASE = '/api'
@@ -13,10 +14,9 @@ function App() {
   const [stats, setStats] = useState({ totalBooks: 0, availableBooks: 0, myLoans: 0, pendingHolds: 0 })
   const [books, setBooks] = useState([])
   const [loans, setLoans] = useState([])
-  const [error, setError] = useState('')
 
   // 获取统计数据
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const token = localStorage.getItem('token')
       const [booksRes, loansRes] = await Promise.all([
@@ -41,10 +41,10 @@ function App() {
     } catch (err) {
       console.error('Failed to fetch stats:', err)
     }
-  }
+  }, [])
 
   // 获取当前用户
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     const token = localStorage.getItem('token')
     if (!token) {
       setLoading(false)
@@ -67,11 +67,15 @@ function App() {
       localStorage.removeItem('token')
     }
     setLoading(false)
-  }
+  }, [fetchStats])
 
   useEffect(() => {
-    fetchUser()
-  }, [])
+    const timer = setTimeout(() => {
+      fetchUser()
+    }, 0)
+
+    return () => clearTimeout(timer)
+  }, [fetchUser])
 
   // 登录成功回调
   const handleLoginSuccess = (userData) => {
@@ -172,8 +176,7 @@ function App() {
     )
   }
 
-  // LIBRARIAN and ADMIN roles
-  if (user.role === 'LIBRARIAN' || user.role === 'ADMIN') {
+  if (user.role === 'LIBRARIAN') {
     return (
       <LibrarianDashboard
         user={user}
@@ -184,6 +187,16 @@ function App() {
         handleLogout={handleLogout}
         getRoleName={getRoleName}
         getPageName={getPageName}
+      />
+    )
+  }
+
+  if (user.role === 'ADMIN') {
+    return (
+      <AdminDashboard
+        user={user}
+        handleLogout={handleLogout}
+        getRoleName={getRoleName}
       />
     )
   }
