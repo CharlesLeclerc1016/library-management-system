@@ -512,6 +512,10 @@ body {
   background: #f7fafc;
 }
 
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 .no-data {
   text-align: center;
   padding: 48px;
@@ -1321,4 +1325,93 @@ body {
   color: #e53e3e;
   font-size: 13px;
   margin-top: 8px;
+}
+
+/* Filter Section */
+.filter-section {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f7fafc;
+  border-radius: 8px;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #4a5568;
+  white-space: nowrap;
+}
+
+.filter-group select {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.filter-group select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Action Buttons Cell - Better spacing for Edit/Delete */
+.action-buttons-cell {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+  white-space: nowrap;
+  min-width: 140px;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: white;
+  min-width: 60px;
+}
+
+.btn-edit {
+  background: #667eea;
+}
+
+.btn-edit:hover {
+  background: #5a67d8;
+  transform: translateY(-1px);
+}
+
+.btn-delete {
+  background: #fc8181;
+}
+
+.btn-delete:hover {
+  background: #f56565;
+  transform: translateY(-1px);
+}
+
+/* Sortable Column Headers */
+.data-table thead th {
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.data-table thead th:hover {
+  background-color: #edf2f7;
 }

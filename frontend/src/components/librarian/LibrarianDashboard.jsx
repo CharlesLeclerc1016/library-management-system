@@ -2,12 +2,22 @@ import React, { useState, useEffect } from 'react'
 
 const API_BASE = '/api/librarian'
 
-const LibrarianDashboard = ({ user, stats: initialStats, books: initialBooks, currentPage, setCurrentPage, handleLogout, getRoleName, getPageName }) => {
+const LibrarianDashboard = ({ user, stats: initialStats, books: initialBooks, currentPage, setCurrentPage }) => {
   const [books, setBooks] = useState([])
   const [stats, setStats] = useState({ totalBooks: 0, availableBooks: 0, myLoans: 0, pendingHolds: 0 })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  // Search state for Books page
+  const [searchKeyword, setSearchKeyword] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [isSearching, setIsSearching] = useState(false)
+
+  // Sort state for Manage page
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
+  const [filterGenre, setFilterGenre] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false)
@@ -47,7 +57,7 @@ const LibrarianDashboard = ({ user, stats: initialStats, books: initialBooks, cu
   const getToken = () => localStorage.getItem('token')
 
   // Fetch books from API
-  const fetchBooks = async (page = 1, size = 20) => {
+  const fetchBooks = async (page = 1, size = 50) => {
     setLoading(true)
     setError('')
     try {
@@ -70,6 +80,33 @@ const LibrarianDashboard = ({ user, stats: initialStats, books: initialBooks, cu
       setError('Network error: ' + err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Search books
+  const handleSearch = async (e) => {
+    e?.preventDefault()
+    if (!searchKeyword.trim()) {
+      setSearchResults([])
+      return
+    }
+    setIsSearching(true)
+    setError('')
+    try {
+      const token = getToken()
+      const res = await fetch(`${API_BASE}/books?keyword=${encodeURIComponent(searchKeyword)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const result = await res.json()
+      if (result.code === 200) {
+        setSearchResults(result.data.list || [])
+      } else {
+        setError(result.message || 'Search failed')
+      }
+    } catch (err) {
+      setError('Network error: ' + err.message)
+    } finally {
+      setIsSearching(false)
     }
   }
 
@@ -108,7 +145,7 @@ const LibrarianDashboard = ({ user, stats: initialStats, books: initialBooks, cu
       })
       const result = await res.json()
       if (result.code === 200) {
-        setSuccess('Book added successfully')
+        setSuccess('Book added successfully!')
         setShowAddModal(false)
         resetAddForm()
         fetchBooks()
@@ -139,7 +176,7 @@ const LibrarianDashboard = ({ user, stats: initialStats, books: initialBooks, cu
       })
       const result = await res.json()
       if (result.code === 200) {
-        setSuccess('Book updated successfully')
+        setSuccess('Book updated successfully!')
         setShowEditModal(false)
         setSelectedBook(null)
         fetchBooks()
@@ -165,7 +202,7 @@ const LibrarianDashboard = ({ user, stats: initialStats, books: initialBooks, cu
       })
       const result = await res.json()
       if (result.code === 200) {
-        setSuccess('Book deleted successfully')
+        setSuccess('Book deleted successfully!')
         setShowDeleteConfirm(false)
         setSelectedBook(null)
         fetchBooks()
@@ -215,6 +252,55 @@ const LibrarianDashboard = ({ user, stats: initialStats, books: initialBooks, cu
   const openDeleteConfirm = (book) => {
     setSelectedBook(book)
     setShowDeleteConfirm(true)
+  }
+
+  // Sort functionality
+  const handleSort = (key) => {
+    let direction = 'asc'
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
+    }
+    setSortConfig({ key, direction })
+  }
+
+  // Get sorted and filtered books
+  const getProcessedBooks = () => {
+    let processed = [...books]
+
+    // Apply filters
+    if (filterGenre) {
+      processed = processed.filter(book => book.genre === filterGenre)
+    }
+    if (filterStatus) {
+      const isAvailable = filterStatus === 'available'
+      processed = processed.filter(book => book.available === isAvailable)
+    }
+
+    // Apply sorting
+    if (sortConfig.key) {
+      processed.sort((a, b) => {
+        let aVal = a[sortConfig.key]
+        let bVal = b[sortConfig.key]
+
+        // Handle string comparison
+        if (typeof aVal === 'string') {
+          aVal = aVal.toLowerCase()
+          bVal = bVal.toLowerCase()
+        }
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1
+        return 0
+      })
+    }
+
+    return processed
+  }
+
+  // Get sort icon
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return ' ↕'
+    return sortConfig.direction === 'asc' ? ' ↑' : ' ↓'
   }
 
   // Render Dashboard view
@@ -301,92 +387,171 @@ const LibrarianDashboard = ({ user, stats: initialStats, books: initialBooks, cu
     </div>
   )
 
-  // Render Books view
-  const renderBooks = () => (
-    <div className="content">
-      <div className="page-header">
-        <h2>📖 Books</h2>
-      </div>
-      {loading && <div className="loading">Loading...</div>}
-      {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">{success}</div>}
-      <div className="books-grid">
-        {books.map((book) => (
-          <div key={book.id} className="book-card">
-            <div className="book-cover">📚</div>
-            <div className="book-info">
-              <h3>{book.title}</h3>
-              <p className="book-author">{book.author}</p>
-              <p className="book-detail">ISBN: {book.isbn}</p>
-              <p className="book-detail">Genre: {book.genre} | Language: {book.language}</p>
-              <p className="book-detail">Location: {book.shelfLocation || 'N/A'}</p>
-              <p className="book-detail">Copies: {book.availableCopies}</p>
-              <div className="book-status">
-                <span className={`status-badge ${book.available ? 'success' : 'danger'}`}>
-                  {book.available ? 'Available' : 'Borrowed'}
-                </span>
+  // Render Books view with search
+  const renderBooks = () => {
+    const displayBooks = searchResults.length > 0 ? searchResults : books
+
+    return (
+      <div className="content">
+        <div className="page-header">
+          <h2>📖 Books</h2>
+        </div>
+
+        {/* Search Box */}
+        <div className="search-section">
+          <form onSubmit={handleSearch} className="search-form">
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search by title, author, or ISBN..."
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+            />
+            <button type="submit" className="search-btn" disabled={isSearching}>
+              {isSearching ? 'Searching...' : '🔍 Search'}
+            </button>
+            {searchKeyword && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setSearchKeyword('')
+                  setSearchResults([])
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </form>
+        </div>
+
+        {loading && <div className="loading">Loading...</div>}
+        {error && <div className="error-message">{error}</div>}
+        {success && <div className="success-message">{success}</div>}
+
+        <div className="books-grid">
+          {displayBooks.map((book) => (
+            <div key={book.id} className="book-card">
+              <div className="book-cover">📚</div>
+              <div className="book-info">
+                <h3>{book.title}</h3>
+                <p className="book-author">{book.author}</p>
+                <p className="book-detail">ISBN: {book.isbn}</p>
+                <p className="book-detail">Genre: {book.genre} | Language: {book.language}</p>
+                <p className="book-detail">Location: {book.shelfLocation || 'N/A'}</p>
+                <p className="book-detail">Copies: {book.availableCopies}</p>
+                <div className="book-status">
+                  <span className={`status-badge ${book.available ? 'success' : 'danger'}`}>
+                    {book.available ? 'Available' : 'Borrowed'}
+                  </span>
+                </div>
               </div>
             </div>
+          ))}
+        </div>
+        {displayBooks.length === 0 && !loading && (
+          <div className="no-data">
+            {searchKeyword ? 'No books found matching your search' : 'No books found'}
           </div>
-        ))}
+        )}
       </div>
-      {books.length === 0 && !loading && <div className="no-data">No books found</div>}
-    </div>
-  )
+    )
+  }
 
   // Render Manage Books view
-  const renderManageBooks = () => (
-    <div className="content">
-      <div className="page-header">
-        <h2>⚙️ Book Management</h2>
-      </div>
-      {loading && <div className="loading">Loading...</div>}
-      {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">{success}</div>}
-      <div className="management-section">
-        <div className="action-buttons">
-          <button className="btn-primary" onClick={() => setShowAddModal(true)}>+ Add New Book</button>
-          <button className="btn-secondary" onClick={() => fetchBooks()}>🔄 Refresh</button>
+  const renderManageBooks = () => {
+    const processedBooks = getProcessedBooks()
+
+    return (
+      <div className="content">
+        <div className="page-header">
+          <h2>⚙️ Book Management</h2>
         </div>
-        <div className="table-section">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Author</th>
-                <th>ISBN</th>
-                <th>Genre</th>
-                <th>Available</th>
-                <th>Copies</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {books.map((book) => (
-                <tr key={book.id}>
-                  <td>{book.title}</td>
-                  <td>{book.author}</td>
-                  <td>{book.isbn}</td>
-                  <td>{book.genre}</td>
-                  <td>
-                    <span className={`status-badge ${book.available ? 'success' : 'danger'}`}>
-                      {book.available ? 'Yes' : 'No'}
-                    </span>
-                  </td>
-                  <td>{book.availableCopies}</td>
-                  <td>
-                    <button className="btn-sm" onClick={() => openEditModal(book)}>Edit</button>
-                    <button className="btn-sm danger" onClick={() => openDeleteConfirm(book)}>Delete</button>
-                  </td>
+        {loading && <div className="loading">Loading...</div>}
+        {error && <div className="error-message">{error}</div>}
+        {success && <div className="success-message">{success}</div>}
+        <div className="management-section">
+          <div className="action-buttons">
+            <button className="btn-primary" onClick={() => setShowAddModal(true)}>+ Add New Book</button>
+            <button className="btn-secondary" onClick={() => fetchBooks()}>🔄 Refresh</button>
+          </div>
+
+          {/* Filters */}
+          <div className="filter-section">
+            <div className="filter-group">
+              <label>Genre:</label>
+              <select value={filterGenre} onChange={(e) => setFilterGenre(e.target.value)}>
+                <option value="">All Genres</option>
+                {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+            <div className="filter-group">
+              <label>Status:</label>
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                <option value="">All Status</option>
+                <option value="available">Available</option>
+                <option value="borrowed">Borrowed</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="table-section">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th onClick={() => handleSort('title')} style={{ cursor: 'pointer' }}>
+                    Title{getSortIcon('title')}
+                  </th>
+                  <th onClick={() => handleSort('author')} style={{ cursor: 'pointer' }}>
+                    Author{getSortIcon('author')}
+                  </th>
+                  <th onClick={() => handleSort('isbn')} style={{ cursor: 'pointer' }}>
+                    ISBN{getSortIcon('isbn')}
+                  </th>
+                  <th onClick={() => handleSort('genre')} style={{ cursor: 'pointer' }}>
+                    Genre{getSortIcon('genre')}
+                  </th>
+                  <th onClick={() => handleSort('available')} style={{ cursor: 'pointer' }}>
+                    Available{getSortIcon('available')}
+                  </th>
+                  <th onClick={() => handleSort('availableCopies')} style={{ cursor: 'pointer' }}>
+                    Copies{getSortIcon('availableCopies')}
+                  </th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {books.length === 0 && !loading && <div className="no-data">No books found</div>}
+              </thead>
+              <tbody>
+                {processedBooks.map((book) => (
+                  <tr key={book.id}>
+                    <td>{book.title}</td>
+                    <td>{book.author}</td>
+                    <td>{book.isbn}</td>
+                    <td>{book.genre}</td>
+                    <td>
+                      <span className={`status-badge ${book.available ? 'success' : 'danger'}`}>
+                        {book.available ? 'Yes' : 'No'}
+                      </span>
+                    </td>
+                    <td>{book.availableCopies}</td>
+                    <td className="action-buttons-cell">
+                      <button className="btn-sm btn-edit" onClick={() => openEditModal(book)}>Edit</button>
+                      <button className="btn-sm btn-delete" onClick={() => openDeleteConfirm(book)}>Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {processedBooks.length === 0 && !loading && <div className="no-data">No books found</div>}
+          </div>
         </div>
+
+        {/* Modals */}
+        {showAddModal && renderAddModal()}
+        {showEditModal && renderEditModal()}
+        {showDeleteConfirm && renderDeleteConfirm()}
       </div>
-    </div>
-  )
+    )
+  }
 
   // Render Loan Management view
   const renderLoanManagement = () => (
@@ -463,6 +628,7 @@ const LibrarianDashboard = ({ user, stats: initialStats, books: initialBooks, cu
                 value={addForm.genre}
                 onChange={(e) => setAddForm({ ...addForm, genre: e.target.value })}
               >
+                <option value="">Select Genre</option>
                 {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
@@ -473,6 +639,7 @@ const LibrarianDashboard = ({ user, stats: initialStats, books: initialBooks, cu
                 value={addForm.language}
                 onChange={(e) => setAddForm({ ...addForm, language: e.target.value })}
               >
+                <option value="">Select Language</option>
                 {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>

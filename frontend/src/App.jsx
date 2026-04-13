@@ -176,18 +176,59 @@ function App() {
     )
   }
 
+  // LIBRARIAN role
   if (user.role === 'LIBRARIAN') {
     return (
-      <LibrarianDashboard
-        user={user}
-        stats={stats}
-        books={books}
-        currentPage={currentPage}
-        setCurrentPage={setCurrentPage}
-        handleLogout={handleLogout}
-        getRoleName={getRoleName}
-        getPageName={getPageName}
-      />
+      <div className="dashboard-container">
+        {/* Sidebar */}
+        <aside className="sidebar">
+          <nav className="sidebar-menu">
+            <div className="menu-item-header">📚 Library System</div>
+            <div className={`menu-item ${currentPage === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentPage('dashboard')}>
+              <span className="icon">🏠</span>
+              <span>Dashboard</span>
+            </div>
+            <div className={`menu-item ${currentPage === 'books' ? 'active' : ''}`} onClick={() => setCurrentPage('books')}>
+              <span className="icon">📖</span>
+              <span>Books</span>
+            </div>
+            <div className={`menu-item ${currentPage === 'manage' ? 'active' : ''}`} onClick={() => setCurrentPage('manage')}>
+              <span className="icon">⚙️</span>
+              <span>Manage Books</span>
+            </div>
+            <div className={`menu-item ${currentPage === 'loans-manage' ? 'active' : ''}`} onClick={() => setCurrentPage('loans-manage')}>
+              <span className="icon">🔄</span>
+              <span>Loan Management</span>
+            </div>
+          </nav>
+          <div className="user-info">
+            <div className="user-avatar">{user.name[0].toUpperCase()}</div>
+            <div className="user-details">
+              <div className="user-name">{user.name}</div>
+              <div className="user-role">{getRoleName(user.role)}</div>
+            </div>
+          </div>
+          <button className="logout-btn" onClick={handleLogout}>Logout</button>
+        </aside>
+
+        {/* Main Content */}
+        <main className="main-content">
+          <header className="top-nav">
+            <span className="breadcrumb">Home / {getPageName(currentPage)}</span>
+            <div className="top-user">
+              <span className="top-user-name">{user.name}</span>
+              <span className="role-badge">{getRoleName(user.role)}</span>
+            </div>
+          </header>
+          <LibrarianDashboard
+            user={user}
+            stats={stats}
+            books={books}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+          />
+        </main>
+      </div>
     )
   }
 
@@ -217,10 +258,12 @@ function App() {
 
 function getPageName(page) {
   const names = {
-    'dashboard': 'Home',
+    'dashboard': 'Dashboard',
     'books': 'Books',
     'loans': 'My Loans',
-    'profile': 'My Profile'
+    'profile': 'My Profile',
+    'manage': 'Manage Books',
+    'loans-manage': 'Loan Management'
   }
   return names[page] || 'Unknown'
 }
