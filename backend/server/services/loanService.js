@@ -149,6 +149,18 @@ async function ensureBorrowAllowed(userId, bookId) {
     throw new AppError(400, "This book is currently unavailable, or you have unpaid fines");
   }
 
+  const existingActiveLoan = await prisma.loan.findFirst({
+    where: {
+      userId,
+      bookId,
+      status: { in: ['Borrowing', 'Overdue'] }
+    }
+  });
+
+  if (existingActiveLoan) {
+    throw new AppError(400, "You already have an active loan for this book");
+  }
+
   await ensureNoUnpaidFines(userId);
 
   return book;
