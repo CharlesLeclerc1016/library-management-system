@@ -202,17 +202,21 @@ const ReaderDashboard = ({ user, stats, books, loans, currentPage, setCurrentPag
         },
         body: JSON.stringify({ bookId })
       })
+
+      const data = await res.json().catch(() => null)
       if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`)
+        const errorMessage = data?.message || `HTTP error! status: ${res.status}`
+        showMessage('error', errorMessage)
+        return
       }
-      const data = await res.json()
-      if (data.code === 200) {
+
+      if (data && data.code === 200) {
         showMessage('success', `Borrowed successfully! Due date: ${new Date(data.data.dueDate).toLocaleDateString('en-US')}`)
         onRefreshStats && onRefreshStats()
         // Refresh book detail
         if (bookDetail) handleViewDetail(bookId)
       } else {
-        showMessage('error', data.message || 'Borrow failed')
+        showMessage('error', data?.message || 'Borrow failed')
       }
     } catch (err) {
       showMessage('error', 'Network error: ' + err.message)
