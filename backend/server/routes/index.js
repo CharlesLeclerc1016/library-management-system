@@ -9,7 +9,6 @@ const wishlistRoutes = require("./wishlistRoutes");
 const ratingRoutes = require("./ratingRoutes");  
 const acquisitionRoutes = require("./acquisitionRoutes");  
 const dashboardRoutes = require("./dashboardRoutes");      
-const ratingRoutes = require("./ratingRoutes");  // 评分路由
 const adminUserRoutes = require("./adminUserRoutes");
 const adminRoutes = require("./adminRoutes");
 const announcementRoutes = require("./announcementRoutes");  // 公告路由
