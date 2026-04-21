@@ -38,6 +38,7 @@ const ReaderDashboard = ({ user, stats, books, loans, currentPage, setCurrentPag
 
   // 续借状态
   const [renewLoading, setRenewLoading] = useState(false)
+  const [returnLoading, setReturnLoading] = useState(false)
 
   // 预约状态
   const [holdLoading, setHoldLoading] = useState(false)
@@ -297,6 +298,29 @@ const ReaderDashboard = ({ user, stats, books, loans, currentPage, setCurrentPag
     setRenewLoading(false)
   }
 
+  // Return loan
+  const handleReturn = async (loanId) => {
+    setReturnLoading(true)
+    const token = localStorage.getItem('token')
+    try {
+      const res = await fetch(`${API_BASE}/loans/${loanId}/return`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (res.ok) {
+        showMessage('success', `Book returned successfully! ${data.data.fineAmount > 0 ? `Fine: $${data.data.fineAmount}` : ''}`)
+        fetchLoanHistory(loanHistoryPagination.page, loanHistoryPagination.size)
+        onRefreshStats && onRefreshStats()
+      } else {
+        showMessage('error', data.message || 'Return failed')
+      }
+    } catch (err) {
+      showMessage('error', 'Network error: ' + err.message)
+    }
+    setReturnLoading(false)
+  }
+
   // Fetch holds
   const fetchHolds = async (status = '') => {
     setHoldsLoading(true)
@@ -473,15 +497,14 @@ const ReaderDashboard = ({ user, stats, books, loans, currentPage, setCurrentPag
     setFinesLoading(true)
     const token = localStorage.getItem('token')
     try {
-      // Assuming there's an endpoint for fines, or we can derive from loan history
-      // For now, we'll filter overdue loans from history
+      // 只显示未交罚金的逾期记录
       const historyRes = await fetch(`${API_BASE}/loans/history?page=1&size=100`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const historyData = await historyRes.json()
       if (historyRes.ok) {
-        const overdueLoans = (historyData.data?.list || []).filter(loan => loan.status === 'Overdue')
-        setFines(overdueLoans)
+        const overdueUnpaidLoans = (historyData.data?.list || []).filter(loan => loan.status === 'Overdue' && loan.finePaid === false)
+        setFines(overdueUnpaidLoans)
       }
     } catch (err) {
       showMessage('error', 'Network error: ' + err.message)
@@ -936,6 +959,16 @@ const ReaderDashboard = ({ user, stats, books, loans, currentPage, setCurrentPag
                           disabled={renewLoading}
                         >
                           {renewLoading ? 'Renewing...' : 'Renew'}
+                        </button>
+                      )}
+                      {(loan.status === 'Borrowing' || loan.status === 'Overdue') && (
+                        <button
+                          className="action-btn return-btn"
+                          onClick={() => handleReturn(loan.id)}
+                          disabled={returnLoading}
+                          style={{ marginLeft: '8px' }}
+                        >
+                          {returnLoading ? 'Returning...' : 'Return'}
                         </button>
                       )}
                     </td>
